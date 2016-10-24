@@ -8,15 +8,17 @@ class App
     {
         add_filter('acf/settings/load_json', array($this, 'loadJson'));
 
-        if ($this->isElasticPress()) {
-            if (is_multisite()) {
-                add_action('network_admin_menu', array($this, 'addSynonymsOptionsPage'));
-            } else {
-                add_action('admin_menu', array($this, 'addSynonymsOptionsPage'));
-            }
+        add_action('init', function () {
+            if ($this->isElasticPress()) {
+                if (is_multisite()) {
+                    add_action('network_admin_menu', array($this, 'addSynonymsOptionsPage'));
+                } else {
+                    add_action('admin_menu', array($this, 'addSynonymsOptionsPage'));
+                }
 
-            add_filter('ep_config_mapping', 'elasticPressSynonymMapping');
-        }
+                add_filter('ep_config_mapping', 'elasticPressSynonymMapping');
+            }
+        });
     }
 
     public function loadJson($paths)
@@ -88,6 +90,10 @@ class App
      */
     public function isElasticPress()
     {
+        if (!class_exists('EP_Modules')) {
+            return false;
+        }
+
         $modules = \EP_Modules::factory();
         $activeModules = $modules->get_active_modules();
 
