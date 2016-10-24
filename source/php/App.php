@@ -23,7 +23,7 @@ class App
 
     public function loadJson($paths)
     {
-        $paths[] = SEARCHENHANCER_PATH . 'source/acf-json';
+        $paths[] = ELASTICPRESS_SYNONYMS_PATH . 'source/acf-json';
         return $paths;
     }
 
