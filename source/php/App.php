@@ -29,7 +29,7 @@ class App
                     add_action('admin_menu', array($this, 'addSynonymsOptionsPage'));
                 }
 
-                add_filter('ep_config_mapping', 'elasticPressSynonymMapping');
+                //add_filter('ep_config_mapping', 'elasticPressSynonymMapping');
             }
         });
     }
@@ -48,36 +48,60 @@ class App
     public function elasticPressSynonymMapping($mapping)
     {
         // bail early if $mapping is missing or not array
-        if (! isset($mapping) || ! is_array($mapping)) {
-            return false;
+        if (!isset($mapping) || !is_array($mapping)) {
+            return $mapping;
         }
 
         // ensure we have filters and is array
-        if (!isset($mapping['settings']['analysis']['filter'])|| ! is_array($mapping['settings']['analysis']['filter'])) {
-            return false;
+        if (!isset($mapping['settings']['analysis']['filter']) || !is_array($mapping['settings']['analysis']['filter'])) {
+            return $mapping;
         }
 
         // ensure we have analyzers and is array
-        if (!isset($mapping['settings']['analysis']['analyzer']['default']['filter']) || ! is_array($mapping['settings']['analysis']['analyzer']['default']['filter'])) {
-            return false;
+        if (!isset($mapping['settings']['analysis']['analyzer']['default']['filter']) || !is_array($mapping['settings']['analysis']['analyzer']['default']['filter'])) {
+            return $mapping;
         }
 
-        $synonyms = get_field('elasticpress_synonyms', 'options');
+        $this->fields();
 
+        $synonyms = array();
+        if (is_multisite()) {
+            switch_to_blog(BLOG_ID_CURRENT_SITE);
+            $synonyms = get_field('elasticpress_synonyms', 'options');
+            restore_current_blog();
+        } else {
+            $synonyms = get_field('elasticpress_synonyms', 'options');
+        }
+
+        if (!$synonyms || empty($synonyms)) {
+            return $mapping;
+        }
+
+        $synonymData = array();
         foreach ($synonyms as $synonym) {
-            $filterKey = 'elasticpress_synonyms_' . sanitize_title($synonym['word']);
-            $synonymsList = str_replace(', ', ',', $synonym['synonyms']);
-
-            $mapping['settings']['analysis']['filter'][$filterKey] = array(
-                'type' => 'synonym',
-                'synonyms' => array(
-                    $synonymsList,
-                ),
+            $data = array_merge(
+                (array)$synonym['word'],
+                explode(',', $synonym['synonyms'])
             );
 
-            // tell the analyzer to use our newly created filter
-            $mapping['settings']['analysis']['analyzer']['default']['filter'][] = $filterKey;
+            $data = array_map('trim', $data);
+            $data = implode(',', $data);
+
+            $synonymData[] = $data;
         }
+
+        $mapping['settings']['analysis']['filter']['elasticpress_synonyms_filter'] = array(
+            'type' => 'synonym',
+            'synonyms' => $synonymData
+        );
+
+        $mapping['settings']['analysis']['analyzer']['elasticpress_synonyms'] = array(
+            'tokenizer' => 'standard',
+            'filter' => array(
+                'lowercase',
+                'elasticpress_synonyms_filter'
+            )
+        );
 
         return $mapping;
     }
