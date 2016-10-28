@@ -29,7 +29,7 @@ class App
                     add_action('admin_menu', array($this, 'addSynonymsOptionsPage'));
                 }
 
-                //add_filter('ep_config_mapping', 'elasticPressSynonymMapping');
+                add_filter('ep_config_mapping', array($this, 'elasticPressSynonymMapping'));
             }
         });
     }
@@ -51,7 +51,6 @@ class App
         if (!isset($mapping) || !is_array($mapping)) {
             return $mapping;
         }
-
         // ensure we have filters and is array
         if (!isset($mapping['settings']['analysis']['filter']) || !is_array($mapping['settings']['analysis']['filter'])) {
             return $mapping;
@@ -90,18 +89,14 @@ class App
             $synonymData[] = $data;
         }
 
+        // define the custom filter
         $mapping['settings']['analysis']['filter']['elasticpress_synonyms_filter'] = array(
             'type' => 'synonym',
             'synonyms' => $synonymData
         );
 
-        $mapping['settings']['analysis']['analyzer']['elasticpress_synonyms'] = array(
-            'tokenizer' => 'standard',
-            'filter' => array(
-                'lowercase',
-                'elasticpress_synonyms_filter'
-            )
-        );
+        // tell the analyzer to use our newly created filter
+        $mapping['settings']['analysis']['analyzer']['default']['filter'][] = 'elasticpress_synonyms_filter';
 
         return $mapping;
     }
