@@ -9,28 +9,12 @@ class App
         add_filter('acf/settings/load_json', array($this, 'loadJson'));
 
         add_action('init', function () {
-            if ($this->isElasticPress()) {
-                if (is_multisite()) {
-                    add_filter('wp_redirect', function ($location) {
-                        if (strpos($location, 'admin.php?page=acf-options-synonyms') > -1) {
-                            $location = network_admin_url(basename($location));
-                        }
-                        return $location;
-                    });
-
-                    if (is_network_admin()) {
-                        acf_add_options_page(array(
-                            'page_title' => __('Synonyms', 'municipio')
-                        ));
-                    }
-
-                    add_action('network_admin_menu', array($this, 'multsiteAddSynonymsOptionsPage'));
-                } else {
-                    add_action('admin_menu', array($this, 'addSynonymsOptionsPage'));
-                }
-
-                add_filter('ep_config_mapping', array($this, 'elasticPressSynonymMapping'));
+            if (!$this->isElasticPress()) {
+                return;
             }
+
+            add_action('admin_menu', array($this, 'addSynonymsOptionsPage'));
+            add_filter('ep_config_mapping', array($this, 'elasticPressSynonymMapping'));
         });
     }
 
@@ -78,11 +62,7 @@ class App
 
         $synonymData = array();
         foreach ($synonyms as $synonym) {
-            $data = array_merge(
-                (array)$synonym['word'],
-                explode(',', $synonym['synonyms'])
-            );
-
+            $data = explode(',', $synonym['words']);
             $data = array_map('trim', $data);
             $data = implode(',', $data);
 
@@ -101,29 +81,6 @@ class App
         return $mapping;
     }
 
-    public function multsiteAddSynonymsOptionsPage()
-    {
-        if (!class_exists('EP_Modules') || !function_exists('acf_add_options_page')) {
-            return;
-        }
-
-        if (!isset($GLOBALS['acf_options_pages']['acf-options-synonyms'])) {
-            return;
-        }
-
-        $optionsPage = new \acf_pro_options_page;
-        $this->fields();
-
-        $page = $GLOBALS['acf_options_pages']['acf-options-synonyms'];
-        $slug = add_submenu_page('elasticpress', $page['page_title'], $page['menu_title'], $page['capability'], $page['menu_slug'], function () {
-            acf_pro_get_view('options-page', array(
-                'page' => $GLOBALS['acf_options_pages']['acf-options-synonyms']
-            ));
-        });
-
-        add_action("load-{$slug}", array($optionsPage, 'admin_load'));
-    }
-
     /**
      * Adds synonyms wordlist options page
      */
@@ -134,8 +91,10 @@ class App
         }
 
         acf_add_options_page(array(
-            'page_title' => __('Synonyms', 'municipio'),
-            'parent_slug' => 'elasticpress'
+            'page_title' => __('Search synonyms', 'municipio'),
+            'menu_slug' => 'synonyms',
+            'parent_slug' => 'options-general.php',
+            'icon_url' => 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+Cjxzdmcgd2lkdGg9IjEwMHB4IiBoZWlnaHQ9Ijg4cHgiIHZpZXdCb3g9IjAgMCAxMDAgODgiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8IS0tIEdlbmVyYXRvcjogU2tldGNoIDQwLjMgKDMzODM5KSAtIGh0dHA6Ly93d3cuYm9oZW1pYW5jb2RpbmcuY29tL3NrZXRjaCAtLT4KICAgIDx0aXRsZT5TaGFwZTwvdGl0bGU+CiAgICA8ZGVzYz5DcmVhdGVkIHdpdGggU2tldGNoLjwvZGVzYz4KICAgIDxkZWZzPjwvZGVmcz4KICAgIDxnIGlkPSJQYWdlLTEiIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIxIiBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPgogICAgICAgIDxwYXRoIGQ9Ik05Ni4zOSwzOS42MSBMOTYuMzksMzkuNjEgTDc0LjE5LDQuOTUgQzcyLjU0MzIyMTUsMi4yOTQ3MTY4IDY5LjY4MjQxNDksMC42MzM3MjQyNzEgNjYuNTYsMC41MiBDNjQuMTI3ODIwMywwLjQ3NDM1NTAwMSA2MS43Nzk0NTg1LDEuNDA4Njk5MzEgNjAuMDQzNDMyLDMuMTEyNzUxMzUgQzU4LjMwNzQwNTUsNC44MTY4MDMzOSA1Ny4zMjk1NzE3LDcuMTQ3MzkyMDkgNTcuMzMsOS41OCBMNTcuMzMsMTUuMTIgQzU3LjMzMDAyMDUsMTUuODU2MTczOCA1Ni43MzYxNTMzLDE2LjQ1NDUwNjIgNTYsMTYuNDYgTDQ0LDE2LjQ2IEM0My4yNTk5Mzg0LDE2LjQ2IDQyLjY2LDE1Ljg2MDA2MTYgNDIuNjYsMTUuMTIgTDQyLjY2LDkuODQgQzQyLjcxNjYzNzksNS41OTA1Nzk4NyAzOS44NzA0NjA5LDEuODQ5MzAwODcgMzUuNzYsMC43NyBDMzIuMDAzODA3OSwtMC4xMzU1OTY1ODcgMjguMDg2MjczMywxLjQzNzgzOTQzIDI2LDQuNjkgTDMuNjEsMzkuNjEgTDMuNjEsMzkuNjEgQy0wLjc4MjIzNDg0Myw0Ni41MzM2NjE0IC0wLjc3OTIzNDgxNiw1NS4zNzE1NTI3IDMuNjE3Njk5NDksNjIuMjkyMjMwNiBDOC4wMTQ2MzM4LDY5LjIxMjkwODUgMTYuMDEzOTQ1Niw3Mi45NzA0Nzk5IDI0LjE0NzczNjMsNzEuOTM1OTQ1MyBDMzIuMjgxNTI3MSw3MC45MDE0MTA2IDM5LjA4NTUxMzUsNjUuMjYxMDExNiA0MS42MSw1Ny40NiBDNDEuODkwNDQ5Myw1Ni42NzEwMTE3IDQyLjYzMjcxMzEsNTYuMTQwMjUzMiA0My40Nyw1Ni4xMyBMNTYuNDcsNTYuMTMgQzU3LjMwNzI4NjksNTYuMTQwMjUzMiA1OC4wNDk1NTA3LDU2LjY3MTAxMTcgNTguMzMsNTcuNDYgQzYwLjg1NDQ4NjUsNjUuMjYxMDExNiA2Ny42NTg0NzI5LDcwLjkwMTQxMDYgNzUuNzkyMjYzNyw3MS45MzU5NDUzIEM4My45MjYwNTQ0LDcyLjk3MDQ3OTkgOTEuOTI1MzY2Miw2OS4yMTI5MDg1IDk2LjMyMjMwMDUsNjIuMjkyMjMwNiBDMTAwLjcxOTIzNSw1NS4zNzE1NTI3IDEwMC43MjIyMzUsNDYuNTMzNjYxNCA5Ni4zMywzOS42MSBMOTYuMzksMzkuNjEgWiBNMjEuNTEsNjIuOCBDMTYuNjk1OTkxMyw2Mi44MDQwNDU0IDEyLjM1Mzc1MTQsNTkuOTA3MjY5NyAxMC41MDg3MDYzLDU1LjQ2MDg2NjIgQzguNjYzNjYxMTUsNTEuMDE0NDYyNyA5LjY3OTMwNDgyLDQ1Ljg5NDQyMTIgMTMuMDgxODkzLDQyLjQ4ODk3MTMgQzE2LjQ4NDQ4MTIsMzkuMDgzNTIxMyAyMS42MDM2NjcxLDM4LjA2MzU3MzcgMjYuMDUxNjIwMSwzOS45MDQ4ODAxIEMzMC40OTk1NzMyLDQxLjc0NjE4NjUgMzMuMzk5OTk4Myw0Ni4wODU5ODk2IDMzLjQsNTAuOSBDMzMuNDAwMDAyMyw1Ny40NjgyODUzIDI4LjA3ODI4MjksNjIuNzk0NDgwNCAyMS41MSw2Mi44IEwyMS41MSw2Mi44IFogTTc4LjUxLDYyLjggQzczLjY5Njg5OTMsNjIuOCA2OS4zNTc3Mjc1LDU5LjkwMDY1ODEgNjcuNTE1ODMzNiw1NS40NTM5MzI4IEM2NS42NzM5Mzk3LDUxLjAwNzIwNzYgNjYuNjkyMDUzMiw0NS44ODg4MDU1IDcwLjA5NTQyOTMsNDIuNDg1NDI5MyBDNzMuNDk4ODA1NSwzOS4wODIwNTMyIDc4LjYxNzIwNzYsMzguMDYzOTM5NyA4My4wNjM5MzI4LDM5LjkwNTgzMzYgQzg3LjUxMDY1ODEsNDEuNzQ3NzI3NSA5MC40MSw0Ni4wODY4OTkzIDkwLjQxLDUwLjkgQzkwLjQxMDAwNDUsNTQuMDU5NTQ0NSA4OS4xNTM1MTMsNTcuMDg5MzkxIDg2LjkxNzUwMjYsNTkuMzIxNjQ5NyBDODQuNjgxNDkyMiw2MS41NTM5MDg0IDgxLjY0OTU0LDYyLjgwNTMxMDIgNzguNDksNjIuOCBMNzguNTEsNjIuOCBaIE01MCw4Ny40OSBDNDcuNDE1MzA3NCw4Ny40OSA0NS4zMiw4NS4zOTQ2OTI2IDQ1LjMyLDgyLjgxIEM0NS4zMiw4MC4yMjUzMDc0IDQ3LjQxNTMwNzQsNzguMTMgNTAsNzguMTMgQzUyLjU4NDY5MjYsNzguMTMgNTQuNjgsODAuMjI1MzA3NCA1NC42OCw4Mi44MSBDNTQuNjgsODUuMzk0NjkyNiA1Mi41ODQ2OTI2LDg3LjQ5IDUwLDg3LjQ5IEw1MCw4Ny40OSBaIE02NC4xNSw4Ny40OSBDNjEuNTY1MzA3NCw4Ny40OSA1OS40Nyw4NS4zOTQ2OTI2IDU5LjQ3LDgyLjgxIEM1OS40Nyw4MC4yMjUzMDc0IDYxLjU2NTMwNzQsNzguMTMgNjQuMTUsNzguMTMgQzY2LjczNDY5MjYsNzguMTMgNjguODMsODAuMjI1MzA3NCA2OC44Myw4Mi44MSBDNjguODMwMDIzNSw4NS4zODY5MDIyIDY2Ljc0Njg3ODcsODcuNDc4OTg3NiA2NC4xNyw4Ny40OSBMNjQuMTUsODcuNDkgWiBNMzUuODQsODcuNDkgQzMzLjI1NTMwNzQsODcuNDkgMzEuMTYsODUuMzk0NjkyNiAzMS4xNiw4Mi44MSBDMzEuMTYsODAuMjI1MzA3NCAzMy4yNTUzMDc0LDc4LjEzIDM1Ljg0LDc4LjEzIEMzOC40MjQ2OTI2LDc4LjEzIDQwLjUyLDgwLjIyNTMwNzQgNDAuNTIsODIuODEgQzQwLjUyMDAyMzUsODUuMzg2OTAyMiAzOC40MzY4Nzg3LDg3LjQ3ODk4NzYgMzUuODYsODcuNDkgTDM1Ljg0LDg3LjQ5IFoiIGlkPSJTaGFwZSIgZmlsbD0iIzAwMDAwMCI+PC9wYXRoPgogICAgPC9nPgo8L3N2Zz4='
         ));
     }
 
@@ -157,95 +116,5 @@ class App
         }
 
         return false;
-    }
-
-    public function fields()
-    {
-        if (!function_exists('acf_add_local_field_group')) {
-            return;
-        }
-
-        acf_add_local_field_group(array(
-            'key' => 'group_57fcc7ef3b815',
-            'title' => 'Synonyms',
-            'fields' => array(
-                array(
-                    'key' => 'field_57fcc7f8c8862',
-                    'label' => 'Synonyms',
-                    'name' => 'elasticpress_synonyms',
-                    'type' => 'repeater',
-                    'instructions' => '',
-                    'required' => 0,
-                    'conditional_logic' => 0,
-                    'wrapper' => array(
-                        'width' => '',
-                        'class' => '',
-                        'id' => '',
-                    ),
-                    'collapsed' => '',
-                    'min' => '',
-                    'max' => '',
-                    'layout' => 'table',
-                    'button_label' => 'Add word',
-                    'sub_fields' => array(
-                        array(
-                            'key' => 'field_57fcc813c8863',
-                            'label' => 'Word',
-                            'name' => 'word',
-                            'type' => 'text',
-                            'instructions' => 'The original word',
-                            'required' => 1,
-                            'conditional_logic' => 0,
-                            'wrapper' => array(
-                                'width' => '20',
-                                'class' => '',
-                                'id' => '',
-                            ),
-                            'default_value' => '',
-                            'placeholder' => '',
-                            'prepend' => '',
-                            'append' => '',
-                            'maxlength' => '',
-                        ),
-                        array(
-                            'key' => 'field_57fcc820c8864',
-                            'label' => 'Synonyms',
-                            'name' => 'synonyms',
-                            'type' => 'text',
-                            'instructions' => 'Comma separated list of synonyms',
-                            'required' => 1,
-                            'conditional_logic' => 0,
-                            'wrapper' => array(
-                                'width' => '',
-                                'class' => '',
-                                'id' => '',
-                            ),
-                            'default_value' => '',
-                            'placeholder' => '',
-                            'prepend' => '',
-                            'append' => '',
-                            'maxlength' => '',
-                        ),
-                    ),
-                ),
-            ),
-            'location' => array(
-                array(
-                    array(
-                        'param' => 'options_page',
-                        'operator' => '==',
-                        'value' => 'acf-options-synonyms',
-                    ),
-                ),
-            ),
-            'menu_order' => 0,
-            'position' => 'normal',
-            'style' => 'default',
-            'label_placement' => 'top',
-            'instruction_placement' => 'label',
-            'hide_on_screen' => '',
-            'active' => 1,
-            'description' => '',
-        ));
     }
 }
