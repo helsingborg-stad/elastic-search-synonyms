@@ -7,21 +7,31 @@ class App
     public function __construct()
     {
         add_filter('acf/settings/load_json', array($this, 'loadJson'));
-
-        add_action('init', function () {
-            if (!$this->isElasticPress()) {
-                return;
-            }
-
-            add_action('admin_menu', array($this, 'addSynonymsOptionsPage'));
-            add_filter('ep_config_mapping', array($this, 'elasticPressSynonymMapping'));
-        });
+        add_action('init', array($this, 'init'));
     }
 
     public function loadJson($paths)
     {
         $paths[] = ELASTICPRESS_SYNONYMS_PATH . 'source/acf-json';
         return $paths;
+    }
+
+    /**
+     * Init
+     * @return void
+     */
+    public function init()
+    {
+        if (!$this->isElasticPress()) {
+            return;
+        }
+
+        if (is_multisite()) {
+            add_action('acf/save_post', array($this, 'multisiteSync'));
+        }
+
+        add_action('admin_menu', array($this, 'addSynonymsOptionsPage'));
+        add_filter('ep_config_mapping', array($this, 'elasticPressSynonymMapping'));
     }
 
     /**
@@ -47,14 +57,7 @@ class App
 
         $this->fields();
 
-        $synonyms = array();
-        if (is_multisite()) {
-            switch_to_blog(BLOG_ID_CURRENT_SITE);
-            $synonyms = get_field('elasticpress_synonyms', 'options');
-            restore_current_blog();
-        } else {
-            $synonyms = get_field('elasticpress_synonyms', 'options');
-        }
+        $synonyms = (array) get_field('elasticpress_synonyms', 'options');
 
         if (!$synonyms || empty($synonyms)) {
             return $mapping;
@@ -116,5 +119,32 @@ class App
         }
 
         return false;
+    }
+
+    /**
+     * Syncs synonyms between sites in multisite
+     * @param  string|int $postId Saved post
+     * @return void
+     */
+    public function multisiteSync($postId)
+    {
+        if ($postId != 'options') {
+            return;
+        }
+
+        $screen = get_current_screen();
+        if ($screen->id != 'settings_page_synonyms') {
+            return;
+        }
+
+        $sites = get_sites();
+        $synonyms = get_field('elasticpress_synonyms', 'options');
+
+        foreach ($sites as $site) {
+            switch_to_blog($site->blog_id);
+            update_field('field_57fcc7f8c8862', $synonyms, 'options');
+        }
+
+        restore_current_blog();
     }
 }
