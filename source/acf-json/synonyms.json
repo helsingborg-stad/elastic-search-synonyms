@@ -3,8 +3,25 @@
         "title": "Synonyms",
         "fields": [
             {
+                "key": "field_5821ae293b03f",
+                "label": "",
+                "name": "",
+                "type": "message",
+                "instructions": "",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "message": "A synonym group is a list (group) of words that relate to each other. All words in the same row will be seen as synonyms with each other. The synonyms are used to improve search results.",
+                "new_lines": "wpautop",
+                "esc_html": 0
+            },
+            {
                 "key": "field_57fcc7f8c8862",
-                "label": "Synonyms",
+                "label": "Synonym groups",
                 "name": "elasticpress_synonyms",
                 "type": "repeater",
                 "instructions": "",
