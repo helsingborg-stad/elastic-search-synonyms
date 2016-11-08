@@ -55,8 +55,6 @@ class App
             return $mapping;
         }
 
-        $this->fields();
-
         $synonyms = (array) get_field('elasticpress_synonyms', 'options');
 
         if (!$synonyms || empty($synonyms)) {
