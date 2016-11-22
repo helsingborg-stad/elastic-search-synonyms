@@ -43,7 +43,7 @@
                         "label": "Words",
                         "name": "words",
                         "type": "text",
-                        "instructions": "The words that relate to each other",
+                        "instructions": "The words that relate to each other, splitted on comma",
                         "required": 1,
                         "conditional_logic": 0,
                         "wrapper": {
