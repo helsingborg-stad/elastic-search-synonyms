@@ -59,9 +59,12 @@ class App
         foreach ($synonyms as $synonym) {
             $data = explode(',', $synonym['words']);
             $data = array_map('trim', $data);
-            $data = implode(',', $data);
 
-            $synonymData[] = $data;
+            for ($i = 0; $i < count($data); $i++) {
+                $pop = array_pop($data);
+                array_unshift($data, $pop);
+                $synonymData[] = implode(',', $data);
+            }
         }
 
         $mapping['settings']['analysis']['filter']['elasticpress_synonyms_filter'] = array(
