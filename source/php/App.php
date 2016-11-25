@@ -41,17 +41,11 @@ class App
      */
     public function elasticPressSynonymMapping($mapping)
     {
-        // bail early if $mapping is missing or not array
-        if (!isset($mapping) || !is_array($mapping)) {
-            return $mapping;
-        }
-        // ensure we have filters and is array
-        if (!isset($mapping['settings']['analysis']['filter']) || !is_array($mapping['settings']['analysis']['filter'])) {
+        if (!$mapping) {
             return $mapping;
         }
 
-        // ensure we have analyzers and is array
-        if (!isset($mapping['settings']['analysis']['analyzer']['default']['filter']) || !is_array($mapping['settings']['analysis']['analyzer']['default']['filter'])) {
+        if (!isset($mapping['settings']['analysis']['filter']) || !isset($mapping['settings']['analysis']['analyzer'])) {
             return $mapping;
         }
 
@@ -70,14 +64,18 @@ class App
             $synonymData[] = $data;
         }
 
-        // define the custom filter
         $mapping['settings']['analysis']['filter']['elasticpress_synonyms_filter'] = array(
             'type' => 'synonym',
             'synonyms' => $synonymData
         );
 
-        // tell the analyzer to use our newly created filter
-        $mapping['settings']['analysis']['analyzer']['default']['filter'][] = 'elasticpress_synonyms_filter';
+        $mapping['settings']['analysis']['analyzer']['elasticpress_synonyms'] = array(
+            'tokenizer' => 'standard',
+            'filter' => array(
+                'lowercase',
+                'elasticpress_synonyms_filter'
+            )
+        );
 
         return $mapping;
     }
