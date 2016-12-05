@@ -7,7 +7,9 @@ class App
     public function __construct()
     {
         add_filter('acf/settings/load_json', array($this, 'loadJson'));
+
         add_action('init', array($this, 'init'));
+        add_action('acf/save_post', array($this, 'elasticpressReindex'), 20);
     }
 
     public function loadJson($paths)
@@ -32,6 +34,17 @@ class App
 
         add_action('admin_menu', array($this, 'addSynonymsOptionsPage'));
         add_filter('ep_config_mapping', array($this, 'elasticPressSynonymMapping'));
+    }
+
+    public function elasticpressReindex()
+    {
+        $screen = get_current_screen();
+
+        if ($screen->id !== 'tools_page_synonyms') {
+            return;
+        }
+
+        wp_schedule_single_event(time(), 'ep_sync');
     }
 
     /**
