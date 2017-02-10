@@ -44,7 +44,8 @@ class App
             return;
         }
 
-        wp_schedule_single_event(time(), 'ep_sync');
+        // Run cron in three minutes
+        wp_schedule_single_event(time() + 300, 'ep_sync');
     }
 
     /**
