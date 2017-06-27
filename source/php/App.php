@@ -44,8 +44,8 @@ class App
             return;
         }
 
-        // Run cron in three minutes
-        wp_schedule_single_event(time() + 300, 'ep_sync');
+        // Run cron in 10 seconds
+        wp_schedule_single_event(time() + 10, 'ep_sync');
     }
 
     /**
@@ -55,42 +55,34 @@ class App
      */
     public function elasticPressSynonymMapping($mapping)
     {
-        if (!$mapping) {
-            return $mapping;
-        }
 
-        if (!isset($mapping['settings']['analysis']['filter']) || !isset($mapping['settings']['analysis']['analyzer'])) {
-            return $mapping;
-        }
-
+        //Get synonyms
         $synonyms = (array) get_field('elasticpress_synonyms', 'options');
 
+        // Validate that we have data, if not. Exit.
         if (!$synonyms || empty($synonyms)) {
             return $mapping;
         }
 
+        // Get synonyms
         $synonymData = array();
         foreach ($synonyms as $synonym) {
             $data = explode(',', $synonym['words']);
             $data = array_map('trim', $data);
             $data = implode(',', $data);
-
-            $synonymData[] = $data;
+            $synonymData[] = strtolower($data);
         }
 
-        $mapping['settings']['analysis']['filter']['elasticpress_synonyms_filter'] = array(
+        // Define filter for synonyms
+        $mapping['settings']['analysis']['filter']['elasticpress_synonyms'] = array(
             'type' => 'synonym',
             'synonyms' => $synonymData
         );
 
-        $mapping['settings']['analysis']['analyzer']['elasticpress_synonyms'] = array(
-            'tokenizer' => 'standard',
-            'filter' => array(
-                'lowercase',
-                'elasticpress_synonyms_filter'
-            )
-        );
+        // Tell ES to use filter above by default
+        array_unshift($mapping['settings']['analysis']['analyzer']['default']['filter'], 'elasticpress_synonyms');
 
+        // Return new mapping settings
         return $mapping;
     }
 
